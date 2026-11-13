@@ -1,0 +1,1 @@
+import {request} from './client';import {Study} from '../types/domain';export const getStudies=()=>request<Study[]>('/studies');export const annotateStudy=(id:number,description:string)=>request<Study>(`/studies/${id}`,{method:'PATCH',body:JSON.stringify({description})});

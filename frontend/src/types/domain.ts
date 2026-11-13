@@ -1,0 +1,12 @@
+export interface User{name:string;email:string;role:string}
+export interface Study{id:number;code:string;name:string;description:string;source:string}
+export interface Profile{id:number;code:string;study_id:number;name:string;arrival_rate:number;description:string}
+export interface Scenario{id:number;code:string;name:string;profile_id:number;servers:number;mean_service_minutes:number;owner:string;arrival_rate:number;service_rate:number;utilization:number;stable:boolean;profile_name:string}
+export interface Interval{mean:number;lower:number;upper:number;standard_error:number;degrees_of_freedom:number;critical_t:number;degenerate:boolean;confidence:number}
+export interface Replication{replication:number;arrival_spawn_key:number[];service_spawn_key:number[];mean_wait_minutes:number;mean_system_minutes:number;wait_probability:number;max_wait_minutes:number;busy_fraction_window:number;window_minutes:number;retained_customers:number}
+export interface Customer{customer:number;arrival:number;service_start:number;completion:number;server:number;wait:number;system:number;queue_after_arrival:number}
+export interface Snapshot{study:Study;profile:Profile;scenario:Scenario;time_unit:string;rate_unit:string}
+export interface Result{analytical:{arrival_rate:number;service_rate:number;servers:number;utilization:number;p0:number;wait_probability:number;mean_wait_minutes:number;mean_system_minutes:number;mean_queue_length:number;capacity_per_minute:number};replications:Replication[];wait_interval:Interval;system_interval:Interval;mean_wait_probability:number;mean_busy_fraction_window:number;sample_customers:Customer[];customers:number;warmup:number;retained_per_replication:number;replication_count:number;seed:number;mean_difference_minutes:number;assumptions:string;ci_note:string;finite_window_note:string;input_snapshot:Snapshot;input_hash:string}
+export interface Run{id:number;name:string;scenario_id:number;customers:number;warmup:number;replications:number;seed:number;confidence:number;input_snapshot:Snapshot;status:string;result:Result;error:string;owner:string;created_at:string}
+export interface Note{id:number;run_id:number;title:string;interpretation:string;proposal:string;status:string;owner:string;reviewer:string;review_note:string;created_at:string}
+export interface Audit{id:number;actor:string;action:string;target:string;created_at:string}

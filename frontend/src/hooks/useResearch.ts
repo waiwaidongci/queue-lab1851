@@ -1,0 +1,1 @@
+import {useEffect} from 'react';import {useResearch} from '../stores/research';export function useResearchData(poll=false){const s=useResearch();useEffect(()=>{s.refresh();if(poll){const t=setInterval(s.refresh,2000);return()=>clearInterval(t)}},[s.refresh,poll]);return s;}

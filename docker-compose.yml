@@ -1,0 +1,72 @@
+name: ${COMPOSE_PROJECT_NAME:-queue-lab}
+services:
+  frontend:
+    container_name: ${COMPOSE_PROJECT_NAME:-queue-lab}-frontend
+    build: ./frontend
+    ports: ["${FRONTEND_PORT:-18220}:80"]
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  backend:
+    container_name: ${COMPOSE_PROJECT_NAME:-queue-lab}-backend
+    build: ./backend
+    environment: &backend-env
+      DATABASE_URL: postgresql+psycopg://queue:queue@db/queue
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-local-demo-queue-lab-change-this-key}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    ports: ["${BACKEND_PORT:-19220}:8000"]
+    volumes: ["artifacts:/artifacts"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+  worker:
+    container_name: ${COMPOSE_PROJECT_NAME:-queue-lab}-worker
+    build: ./backend
+    command: ["python", "-m", "src.worker"]
+    environment: *backend-env
+    volumes: ["artifacts:/artifacts"]
+    depends_on:
+      backend: {condition: service_healthy}
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pathlib,time; assert time.time()-float(pathlib.Path('/artifacts/heartbeat').read_text())<15"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  db:
+    container_name: ${COMPOSE_PROJECT_NAME:-queue-lab}-db
+    image: postgres:16-alpine
+    environment: {POSTGRES_USER: queue, POSTGRES_PASSWORD: queue, POSTGRES_DB: queue}
+    ports: ["${DB_PORT:-17720}:5432"]
+    volumes: ["db-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queue -d queue"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    container_name: ${COMPOSE_PROJECT_NAME:-queue-lab}-redis
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  db-data:
+  redis-data:
+  artifacts:

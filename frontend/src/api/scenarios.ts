@@ -1,0 +1,1 @@
+import {request} from './client';import {Scenario} from '../types/domain';export const getScenarios=()=>request<Scenario[]>('/scenarios');export const createScenario=(data:{name:string;profile_id:number;servers:number;mean_service_minutes:number})=>request<Scenario>('/scenarios',{method:'POST',body:JSON.stringify(data)});
