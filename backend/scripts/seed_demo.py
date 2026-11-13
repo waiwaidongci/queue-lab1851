@@ -21,15 +21,36 @@ def seed():
             profile=db.query(ArrivalProfile).filter_by(code=code).first()
             if not profile:profile=ArrivalProfile(code=code,name=name,study_id=studies[0 if i<2 else 1].id,arrival_rate=rate,description="每分钟请求数lambda；仅作恒定到达率的模拟配置，不是真实预测。");db.add(profile);db.flush()
             profiles.append(profile)
+        tv_code='AP-TIDE'
+        tv_profile=db.query(ArrivalProfile).filter_by(code=tv_code).first()
+        tv_segments=[
+            {"duration_minutes":90,"arrival_rate":.45},
+            {"duration_minutes":30,"arrival_rate":0.},
+            {"duration_minutes":90,"arrival_rate":1.05},
+        ]
+        if not tv_profile:
+            tv_profile=ArrivalProfile(code=tv_code,name="靠泊潮汐分时段",study_id=studies[1].id,
+                arrival_rate=sum(s["duration_minutes"]*s["arrival_rate"] for s in tv_segments)/sum(s["duration_minutes"] for s in tv_segments),
+                description="分时段到达强度：平峰/空到达/靠泊集中，峰值段双台短时超载；有限营业试验配置，不是真实预测。",
+                segments=tv_segments);db.add(tv_profile);db.flush()
         scenarios=[]
         for i,profile in enumerate(profiles):
             for servers in [2,3]:
                 code=f"SC-{i+1}-{servers}";scenario=db.query(ServiceScenario).filter_by(code=code).first()
                 if not scenario:scenario=ServiceScenario(code=code,name=f"{profile.name} · {servers}台服务",profile_id=profile.id,servers=servers,mean_service_minutes=2.5 if i==0 else 1/.45,owner="季遥 · 排队分析员");db.add(scenario);db.flush()
                 scenarios.append(scenario)
+        tv_scenarios=[]
+        for servers in [2,3]:
+            code=f"SC-T-{servers}";scenario=db.query(ServiceScenario).filter_by(code=code).first()
+            if not scenario:scenario=ServiceScenario(code=code,name=f"{tv_profile.name} · {servers}台有限营业",profile_id=tv_profile.id,servers=servers,mean_service_minutes=1/.45,owner="季遥 · 排队分析员");db.add(scenario);db.flush()
+            tv_scenarios.append(scenario)
         if not db.query(SimulationRun).filter_by(name="上午双窗口 · 基准独立重复").first():
             scenario=scenarios[0];snapshot=create_snapshot(db,scenario);result=calculate_run(snapshot,3000,500,20,2026,.95)
             run=SimulationRun(name="上午双窗口 · 基准独立重复",scenario_id=scenario.id,customers=3000,warmup=500,replications=20,seed=2026,confidence=.95,input_snapshot=snapshot,status="completed",result=result,owner="季遥 · 排队分析员");db.add(run);db.flush()
             db.add(CapacityNote(run_id=run.id,title="上午窗口容量观察底稿",interpretation="已区分稳态解析和有限顾客仿真，暖机与t区间仅描述模拟均值误差。",proposal="保留到达/服务假设，追加高负荷参数试验后再讨论现场窗口配置。",status="approved",owner="季遥 · 排队分析员",reviewer="陆潮 · 运营研究负责人",review_note="批准容量研究归档；不作为现场等待承诺或自动排班指令。"))
+        if not db.query(SimulationRun).filter_by(name="靠泊潮汐 · 双台有限营业试验").first():
+            scenario=tv_scenarios[0];snapshot=create_snapshot(db,scenario);result=calculate_run(snapshot,0,0,20,2026,.95)
+            run=SimulationRun(name="靠泊潮汐 · 双台有限营业试验",scenario_id=scenario.id,customers=0,warmup=0,replications=20,seed=2026,confidence=.95,input_snapshot=snapshot,status="completed",result=result,owner="季遥 · 排队分析员");db.add(run);db.flush()
+            db.add(CapacityNote(run_id=run.id,title="分时段集中到达的积压与排空观察",interpretation="峰值段强度超过双台容量属短时超载，有限营业模型允许运行且不输出稳态值；营业期积压与停收后排空等待已分开统计，空到达区间无到达但保留区间行。",proposal="对照三台情景验证峰值段增开窗口对排空时长的效果，再讨论现场配置。",status="approved",owner="季遥 · 排队分析员",reviewer="陆潮 · 运营研究负责人",review_note="批准分时段有限营业归档；分段强度与种子已冻结，结论仅适用于该有限营业时段，不作现场等待承诺。"))
         db.commit();print(json.dumps({m.__tablename__:db.query(m).count() for m in [User,QueueStudy,ArrivalProfile,ServiceScenario,SimulationRun,CapacityNote]},ensure_ascii=False))
 if __name__=="__main__":seed()

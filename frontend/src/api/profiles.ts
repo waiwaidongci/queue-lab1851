@@ -1,1 +1,1 @@
-import {request} from './client';import {Profile} from '../types/domain';export const getProfiles=()=>request<Profile[]>('/profiles');
+import {request} from './client';import {Profile,Segment} from '../types/domain';export const getProfiles=()=>request<Profile[]>('/profiles');export const createProfile=(data:{name:string;study_id:number;description:string;arrival_rate?:number;segments?:Segment[]})=>request<Profile>('/profiles',{method:'POST',body:JSON.stringify(data)});
